@@ -1,5 +1,5 @@
 from datetime import datetime
-from http.client import HTTPException
+from random import randint
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
@@ -14,30 +14,31 @@ async def root():
     return {"message": "Root endpoint of the API"}
 
 
+dateFormatter = datetime.now().isoformat(timespec="hours")
 campaigns_list: Any = [
     {
         "campaign_id": 1,
         "name": "Emerald Coast",
-        "due_date": datetime.now(),
-        "created_at": datetime.now(),
+        "due_date": dateFormatter,
+        "created_at": dateFormatter,
     },
     {
         "campaign_id": 2,
         "name": "Be the Magic",
-        "due_date": datetime.now(),
-        "created_at": datetime.now(),
+        "due_date": dateFormatter,
+        "created_at": dateFormatter,
     },
     {
         "campaign_id": 3,
         "name": "Wizard of Emerald",
-        "due_date": datetime.now(),
-        "created_at": datetime.now(),
+        "due_date": dateFormatter,
+        "created_at": dateFormatter,
     },
     {
         "campaign_id": 4,
         "name": "Oz of City",
-        "due_date": datetime.now(),
-        "created_at": datetime.now(),
+        "due_date": dateFormatter,
+        "created_at": dateFormatter,
     },
 ]
 
@@ -75,9 +76,15 @@ async def read_campaign_by_id(c_id: int):
 
 
 @app.post("/campaigns")
-async def create_campaign(campaign: dict):
-    campaigns_list.append(campaign)
-    return {"campaigns": campaigns_list}
+async def create_campaign(body: dict[str, Any]):
+    new: Any = {
+        "campaign_id": randint(1, 100),
+        "name": body["name"],
+        "due_date": body.get("due_date"),
+        "created_at": dateFormatter,
+    }
+    campaigns_list.append(new)
+    return {"campaigns": new}
 
 
 @app.get("/names")
