@@ -72,7 +72,7 @@ async def read_campaign_by_id(c_id: int):
     for each_campaign in campaigns_list:
         if each_campaign["campaign_id"] == c_id:
             return {"campaigns": each_campaign}
-    return HTTPException(status_code=404, detail="Campaign not found")
+    raise HTTPException(status_code=404, detail="Campaign not found")
 
 
 @app.post("/campaigns")
