@@ -14,31 +14,30 @@ async def root():
     return {"message": "Root endpoint of the API"}
 
 
-dateFormatter = datetime.now().isoformat(timespec="hours")
 campaigns_list: Any = [
     {
         "campaign_id": 1,
         "name": "Emerald Coast",
-        "due_date": dateFormatter,
-        "created_at": dateFormatter,
+        "due_date": datetime.now().strftime("%B %d, %Y %I:%M %p"),
+        "created_at": datetime.now().strftime("%B %d, %Y %I:%M %p"),
     },
     {
         "campaign_id": 2,
         "name": "Be the Magic",
-        "due_date": dateFormatter,
-        "created_at": dateFormatter,
+        "due_date": datetime.now().strftime("%B %d, %Y %I:%M %p"),
+        "created_at": datetime.now().strftime("%B %d, %Y %I:%M %p"),
     },
     {
         "campaign_id": 3,
         "name": "Wizard of Emerald",
-        "due_date": dateFormatter,
-        "created_at": dateFormatter,
+        "due_date": datetime.now().strftime("%B %d, %Y %I:%M %p"),
+        "created_at": datetime.now().strftime("%B %d, %Y %I:%M %p"),
     },
     {
         "campaign_id": 4,
         "name": "Oz of City",
-        "due_date": dateFormatter,
-        "created_at": dateFormatter,
+        "due_date": datetime.now().strftime("%B %d, %Y %I:%M %p"),
+        "created_at": datetime.now().strftime("%B %d, %Y %I:%M %p"),
     },
 ]
 
@@ -81,7 +80,7 @@ async def create_campaign(body: dict[str, Any]):
         "campaign_id": randint(1, 100),
         "name": body["name"],
         "due_date": body.get("due_date"),
-        "created_at": dateFormatter,
+        "created_at": datetime.now().strftime("%B %d, %Y %I:%M %p"),
     }
     campaigns_list.append(new)
     return {"campaigns": new}
