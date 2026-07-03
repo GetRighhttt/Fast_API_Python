@@ -3,6 +3,7 @@ from random import randint
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from starlette.responses import Response
 
 # how we define the app
 app = FastAPI(root_path="/api/v1")
@@ -61,12 +62,12 @@ person: Any = [
 ]
 
 
-@app.get("/campaigns")
+@app.get("/campaigns", status_code=200)
 async def read_campaigns():
     return {"campaigns": campaigns_list}
 
 
-@app.get("/campaigns/{c_id}")
+@app.get("/campaigns/{c_id}", status_code=200)
 async def read_campaign_by_id(c_id: int):
     for each_campaign in campaigns_list:
         if each_campaign["campaign_id"] == c_id:
@@ -74,7 +75,7 @@ async def read_campaign_by_id(c_id: int):
     raise HTTPException(status_code=404, detail="Campaign not found")
 
 
-@app.post("/campaigns")
+@app.post("/campaigns", status_code=201)
 async def create_campaign(body: dict[str, Any]):
     new: Any = {
         "campaign_id": randint(1, 100),
@@ -86,7 +87,7 @@ async def create_campaign(body: dict[str, Any]):
     return {"campaigns": new}
 
 
-@app.put("/campaigns/{c_id}")
+@app.put("/campaigns/{c_id}", status_code=201)
 async def update_campaign(body: dict[str, Any], c_id: int):
     for index, campaign in enumerate(campaigns_list):
         if campaign["campaign_id"] == c_id:
@@ -100,7 +101,16 @@ async def update_campaign(body: dict[str, Any], c_id: int):
             campaigns_list[index] = updated
             return {"campaigns": updated}
 
-    raise HTTPException(status_code=404, detail="Campaign not added")
+    raise HTTPException(status_code=404, detail="Campaign not updated")
+
+
+@app.delete("/campaigns/{c_id}")
+async def deleted_campaign(c_id: int):
+    for index, campaign in enumerate(campaigns_list):
+        if campaign["campaign_id"] == c_id:
+            campaigns_list.pop(index)
+            return Response(status_code=204)
+    raise HTTPException(status_code=404, detail="Campaign not deleted")
 
 
 @app.get("/names")
