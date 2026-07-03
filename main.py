@@ -14,7 +14,7 @@ async def root():
     return {"message": "Root endpoint of the API"}
 
 
-dateFormatter = datetime.now().isoformat(timespec="hours").replace(":", "-")
+dateFormatter = datetime.now().isoformat(timespec="hours")
 campaigns_list: Any = [
     {
         "campaign_id": 1,
