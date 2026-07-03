@@ -18,7 +18,7 @@ campaigns_list: Any = [
     {
         "campaign_id": 1,
         "name": "Emerald Coast",
-        "due_date": datetime.now().strftime("%B %d, %Y %I:%M %p"),
+        "due_date": datetime.now(),
         "created_at": datetime.now().strftime("%B %d, %Y %I:%M %p"),
     },
     {
@@ -84,6 +84,23 @@ async def create_campaign(body: dict[str, Any]):
     }
     campaigns_list.append(new)
     return {"campaigns": new}
+
+
+@app.put("/campaigns/{c_id}")
+async def update_campaign(body: dict[str, Any], c_id: int):
+    for index, campaign in enumerate(campaigns_list):
+        if campaign["campaign_id"] == c_id:
+            updated: Any = {
+                "campaign_id": c_id,
+                "name": body["name"],
+                "due_date": body.get("due_date"),
+                "created_at": campaign["created_at"],
+            }
+
+            campaigns_list[index] = updated
+            return {"campaigns": updated}
+
+    raise HTTPException(status_code=404, detail="Campaign not added")
 
 
 @app.get("/names")
