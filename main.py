@@ -45,33 +45,37 @@ campaigns_list: Any = [
 person: Any = [
     {
         "first_name": "stefan",
-        "last_name": "Bayne",
+        "last_name": "lamario",
     },
     {
         "first_name": "vincentjr",
-        "last_name": "bayne",
+        "last_name": "terome",
     },
     {
         "first_name": "shawn",
-        "last_name": "bayne",
+        "last_name": "terez",
     },
     {
         "first_name": "vincentsr",
-        "last_name": "bayne",
+        "last_name": "teromes",
     }
 ]
 
 
 @app.get("/campaigns", status_code=200)
-async def read_campaigns():
-    return {"campaigns": campaigns_list}
+async def get_all_campaigns():
+    return {
+        "campaigns": campaigns_list
+    }
 
 
 @app.get("/campaigns/{c_id}", status_code=200)
-async def read_campaign_by_id(c_id: int):
+async def get_campaign_by_id(c_id: int):
     for each_campaign in campaigns_list:
         if each_campaign["campaign_id"] == c_id:
-            return {"campaigns": each_campaign}
+            return {
+                "campaigns": each_campaign
+            }
     raise HTTPException(status_code=404, detail="Campaign not found")
 
 
@@ -99,13 +103,16 @@ async def update_campaign(body: dict[str, Any], c_id: int):
             }
 
             campaigns_list[index] = updated
-            return {"campaigns": updated}
+
+            return {
+                "campaigns": updated
+            }
 
     raise HTTPException(status_code=404, detail="Campaign not updated")
 
 
 @app.delete("/campaigns/{c_id}")
-async def deleted_campaign(c_id: int):
+async def delete_campaign(c_id: int):
     for index, campaign in enumerate(campaigns_list):
         if campaign["campaign_id"] == c_id:
             campaigns_list.pop(index)
@@ -114,15 +121,19 @@ async def deleted_campaign(c_id: int):
 
 
 @app.get("/names")
-async def read_names():
+async def get_all_names():
     return {"names": person}
 
 
 @app.get("/names/{person_name}")
-async def read_person_first_name(person_name: str):
+async def get_first_or_last_name(person_name: str):
     for each_name in person:
         if each_name["first_name"] == person_name:
-            return {"first_name": each_name}
+            return {
+                "first_name": each_name
+            }
         elif each_name["last_name"] == person_name:
-            return {"last_name": each_name}
+            return {
+                "last_name": each_name
+            }
     raise HTTPException(status_code=404, detail="Last name not found")
