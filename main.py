@@ -109,6 +109,46 @@ async def lifespan(app: FastAPI):
                     name="Enterprise Lead Generation",
                     due_date=datetime.now(timezone.utc),
                 ),
+                Campaign(
+                    name="Spring Customer Acquisition",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Referral Rewards Program",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Black Friday Sales Event",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Customer Feedback Survey",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="New Feature Awareness Campaign",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Premium Subscription Upgrade",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Mobile App Engagement Drive",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Loyalty Program Enrollment",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Year-End Customer Appreciation",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Product Webinar Registration",
+                    due_date=datetime.now(timezone.utc),
+                ),
             ])
 
         if session.exec(select(Employee)).first() is None:
@@ -118,6 +158,16 @@ async def lifespan(app: FastAPI):
                 Employee(first_name="Olivia", last_name="Martinez"),
                 Employee(first_name="David", last_name="Wilson"),
                 Employee(first_name="Sophia", last_name="Patel"),
+                Employee(first_name="James", last_name="Anderson"),
+                Employee(first_name="Charlotte", last_name="Brown"),
+                Employee(first_name="Benjamin", last_name="Davis"),
+                Employee(first_name="Amelia", last_name="Garcia"),
+                Employee(first_name="William", last_name="Harris"),
+                Employee(first_name="Mia", last_name="Lewis"),
+                Employee(first_name="Lucas", last_name="Walker"),
+                Employee(first_name="Evelyn", last_name="Hall"),
+                Employee(first_name="Henry", last_name="Allen"),
+                Employee(first_name="Ava", last_name="Young"),
             ])
 
         session.commit()
