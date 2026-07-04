@@ -1,3 +1,5 @@
+import base64
+import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Generic, Optional, TypeVar
@@ -166,7 +168,12 @@ async def read_campaigns_by_page_and_page_size_with_offset(
         page: int = Query(1, ge=1),
         page_size: int = Query(3, ge=1),
 ):
-    # establish offset and get total count
+    # 1. Establish offset
+    # 2. get data from database
+    # 3. construct base url
+    # 4. construct next and prev urls
+    # 5. return response
+
     offset = (page - 1) * page_size
 
     campaigns = session.exec(
@@ -180,7 +187,6 @@ async def read_campaigns_by_page_and_page_size_with_offset(
         select(func.count()).select_from(Campaign)
     ).one()
 
-    # prep next and prev url to consume
     base_url = str(request.url).split("?")[0]
 
     next_url = (
@@ -216,6 +222,10 @@ async def read_campaigns_by_limit_with_offset(
         offset: int = Query(0, ge=0),
         limit: int = Query(3, ge=1),
 ):
+    # 1. Get data from database
+    # 2. construct base url
+    # 3. construct next and prev urls
+    # 4. return response
     campaigns = session.exec(
         select(Campaign)
         .order_by(Campaign.campaign_id)
@@ -223,7 +233,6 @@ async def read_campaigns_by_limit_with_offset(
         .limit(limit)
     ).all()
 
-    # prep next and prev url to consume
     base_url = str(request.url).split("?")[0]
     next_url = f"{base_url}?offset={offset + limit}&limit={limit}"
     prev_url = (
@@ -238,6 +247,62 @@ async def read_campaigns_by_limit_with_offset(
         prev=prev_url,
         message="Campaigns retrieved successfully",
         meta={"count": len(campaigns), },
+    )
+
+
+def encode_cursor(last_id: int) -> str:
+    payload = {"last_id": last_id}
+    raw = json.dumps(payload).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("utf-8")
+
+
+def decode_cursor(cursor: str) -> int:
+    try:
+        raw = base64.urlsafe_b64decode(cursor.encode("utf-8"))
+        payload = json.loads(raw.decode("utf-8"))
+        return int(payload["last_id"])
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid cursor")
+
+
+@app.get("/campaigns/cursor", response_model=PaginatedResponse[list[Campaign]], status_code=200)
+async def read_campaigns_by_cursor(
+        request: Request,
+        session: SessionDep,
+        cursor: Optional[str] = Query(None),
+        page_size: int = Query(3, ge=1, le=100),
+):
+    last_id = decode_cursor(cursor) if cursor else None
+
+    statement = select(Campaign).order_by(Campaign.campaign_id).limit(page_size + 1)
+
+    if last_id is not None:
+        statement = statement.where(Campaign.campaign_id > last_id)
+
+    results = session.exec(statement).all()
+
+    has_next_page = len(results) > page_size
+    campaigns = results[:page_size]
+
+    next_cursor = encode_cursor(campaigns[-1].campaign_id) if has_next_page and campaigns else None
+
+    base_url = str(request.url).split("?")[0]
+    next_url = (
+        f"{base_url}?cursor={next_cursor}&page_size={page_size}"
+        if next_cursor
+        else None
+    )
+
+    return PaginatedResponse(
+        data=campaigns,
+        next=next_url,
+        prev=None,
+        message="Campaigns retrieved successfully",
+        meta={
+            "count": len(campaigns),
+            "page_size": page_size,
+            "next_cursor": next_cursor,
+        },
     )
 
 
