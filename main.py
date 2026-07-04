@@ -18,8 +18,8 @@ class Campaign(SQLModel, table=True):
     )
 
 
-class Person(SQLModel, table=True):
-    person_id: Optional[int] = Field(default=None, primary_key=True)
+class Employee(SQLModel, table=True):
+    employee_id: Optional[int] = Field(default=None, primary_key=True)
     first_name: str = Field(index=True)
     last_name: str = Field(index=True)
 
@@ -42,22 +42,22 @@ class CampaignsResponse(BaseModel):
     campaigns: List[Campaign]
 
 
-class PersonCreate(BaseModel):
+class EmployeeCreate(BaseModel):
     first_name: str
     last_name: str
 
 
-class PersonUpdate(BaseModel):
+class EmployeeUpdate(BaseModel):
     first_name: str
     last_name: str
 
 
-class PersonResponse(BaseModel):
-    person: Person
+class EmployeeResponse(BaseModel):
+    employee: Employee
 
 
-class PersonsResponse(BaseModel):
-    names: List[Person]
+class EmployeesResponse(BaseModel):
+    employees: List[Employee]
 
 
 sqlite_file_name = "database.db"
@@ -71,6 +71,7 @@ def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
 
+# we will use this session for the data from the database
 def get_session():
     with Session(engine) as session:
         yield session
@@ -81,26 +82,42 @@ SessionDep = Annotated[Session, Depends(get_session)]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # create database
+    # create database on app start
     create_db_and_tables()
 
-    # if nothing present, fill both tables with starter data
     with Session(engine) as session:
+        # if first element is empty, fill  with starter data
         if session.exec(select(Campaign)).first() is None:
             session.add_all([
-                Campaign(name="NBA Campaign", due_date=datetime.now(timezone.utc)),
-                Campaign(name="NFL Campaign", due_date=datetime.now(timezone.utc)),
-                Campaign(name="FIFA Campaign", due_date=datetime.now(timezone.utc)),
-                Campaign(name="NHL Campaign", due_date=datetime.now(timezone.utc)),
-                Campaign(name="TRACK Campaign", due_date=datetime.now(timezone.utc)),
+                Campaign(
+                    name="Q3 Customer Retention Initiative",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Summer Product Launch",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Back-to-School Promotion",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Holiday Email Marketing",
+                    due_date=datetime.now(timezone.utc),
+                ),
+                Campaign(
+                    name="Enterprise Lead Generation",
+                    due_date=datetime.now(timezone.utc),
+                ),
             ])
 
-        if session.exec(select(Person)).first() is None:
+        if session.exec(select(Employee)).first() is None:
             session.add_all([
-                Person(first_name="Stefan", last_name="Bayne"),
-                Person(first_name="Vincent", last_name="Terome"),
-                Person(first_name="Shawn", last_name="Terez"),
-                Person(first_name="ManInThe", last_name="Middle"),
+                Employee(first_name="Emma", last_name="Johnson"),
+                Employee(first_name="Michael", last_name="Chen"),
+                Employee(first_name="Olivia", last_name="Martinez"),
+                Employee(first_name="David", last_name="Wilson"),
+                Employee(first_name="Sophia", last_name="Patel"),
             ])
 
         session.commit()
@@ -176,75 +193,79 @@ async def delete_campaign(c_id: int, session: SessionDep):
     return Response(status_code=204)
 
 
-@app.get("/names", response_model=PersonsResponse, status_code=200)
-async def read_names(session: SessionDep):
-    people = session.exec(select(Person)).all()
-    return {"names": people}
+@app.get("/employees", response_model=EmployeesResponse, status_code=200)
+async def read_employees(session: SessionDep):
+    employees = session.exec(select(Employee)).all()
+    return {"employees": employees}
 
 
-@app.get("/names/id/{p_id}", response_model=PersonResponse, status_code=200)
-async def read_person_by_id(p_id: int, session: SessionDep):
-    person = session.get(Person, p_id)
+@app.get("/employees/id/{employee_id}", response_model=EmployeeResponse, status_code=200)
+async def read_employee_by_id(employee_id: int, session: SessionDep):
+    employee = session.get(Employee, employee_id)
 
-    if person is None:
-        raise HTTPException(status_code=404, detail="Person not found")
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
 
-    return {"person": person}
+    return {"employee": employee}
 
 
-@app.get("/names/search/{person_name}", response_model=PersonResponse, status_code=200)
-async def read_first_or_last_name(person_name: str, session: SessionDep):
-    statement = select(Person).where(
-        (Person.first_name == person_name) | (Person.last_name == person_name)
+@app.get("/employees/search/{employee_name}", response_model=EmployeeResponse, status_code=200)
+async def read_first_or_last_employee_name(employee_name: str, session: SessionDep):
+    statement = select(Employee).where(
+        (Employee.first_name == employee_name) | (Employee.last_name == employee_name)
     )
 
-    person = session.exec(statement).first()
+    employee = session.exec(statement).first()
 
-    if person is None:
-        raise HTTPException(status_code=404, detail="Person not found")
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
 
-    return {"person": person}
+    return {"employee": employee}
 
 
-@app.post("/names", response_model=PersonResponse, status_code=201)
-async def create_person(body: PersonCreate, session: SessionDep):
-    person = Person(
+@app.post("/employees", response_model=EmployeeResponse, status_code=201)
+async def create_employee(body: EmployeeCreate, session: SessionDep):
+    employee = Employee(
         first_name=body.first_name,
         last_name=body.last_name,
     )
 
-    session.add(person)
+    session.add(employee)
     session.commit()
-    session.refresh(person)
+    session.refresh(employee)
 
-    return {"person": person}
+    return {"employee": employee}
 
 
-@app.put("/names/{p_id}", response_model=PersonResponse, status_code=200)
-async def update_person(p_id: int, body: PersonUpdate, session: SessionDep):
-    person = session.get(Person, p_id)
+@app.put("/employees/{employee_id}", response_model=EmployeeResponse, status_code=200)
+async def update_employee(
+        employee_id: int,
+        body: EmployeeUpdate,
+        session: SessionDep,
+):
+    employee = session.get(Employee, employee_id)
 
-    if person is None:
-        raise HTTPException(status_code=404, detail="Person not found")
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
 
-    person.first_name = body.first_name
-    person.last_name = body.last_name
+    employee.first_name = body.first_name
+    employee.last_name = body.last_name
 
-    session.add(person)
+    session.add(employee)
     session.commit()
-    session.refresh(person)
+    session.refresh(employee)
 
-    return {"person": person}
+    return {"employee": employee}
 
 
-@app.delete("/names/{p_id}", status_code=204)
-async def delete_person(p_id: int, session: SessionDep):
-    person = session.get(Person, p_id)
+@app.delete("/employees/{employee_id}", status_code=204)
+async def delete_employee(employee_id: int, session: SessionDep):
+    employee = session.get(Employee, employee_id)
 
-    if person is None:
-        raise HTTPException(status_code=404, detail="Person not found")
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
 
-    session.delete(person)
+    session.delete(employee)
     session.commit()
 
     return Response(status_code=204)
