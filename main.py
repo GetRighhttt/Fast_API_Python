@@ -81,8 +81,10 @@ SessionDep = Annotated[Session, Depends(get_session)]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # create database
     create_db_and_tables()
 
+    # if nothing present, fill both tables with starter data
     with Session(engine) as session:
         if session.exec(select(Campaign)).first() is None:
             session.add_all([
@@ -102,7 +104,7 @@ async def lifespan(app: FastAPI):
             ])
 
         session.commit()
-
+    # yields for setup then will continue after yield
     yield
 
 
