@@ -2,20 +2,32 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Generic, Optional, TypeVar
 
-from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, HTTPException, Response, Query
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlmodel import Field, Session, SQLModel, create_engine, select
+from starlette.requests import Request
 from typing_extensions import Annotated
 
 T = TypeVar("T")
 
 
+# response models
 class ApiResponse(BaseModel, Generic[T]):
     data: T
     message: Optional[str] = None
     meta: Optional[dict] = None
 
 
+class PaginatedResponse(BaseModel, Generic[T]):
+    data: T
+    next: Optional[str] = None
+    prev: Optional[str] = None
+    message: Optional[str] = None
+    meta: Optional[dict] = None
+
+
+# database models
 class Campaign(SQLModel, table=True):
     campaign_id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
@@ -32,6 +44,7 @@ class Employee(SQLModel, table=True):
     last_name: str = Field(index=True)
 
 
+# mapper models for documentation
 class CampaignCreate(BaseModel):
     name: str
     due_date: Optional[datetime] = None
@@ -52,6 +65,7 @@ class EmployeeUpdate(BaseModel):
     last_name: str
 
 
+# creating database engine
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 
@@ -63,6 +77,7 @@ def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
 
+# session is kind of like the repository for the db - source of truth
 def get_session():
     with Session(engine) as session:
         yield session
@@ -127,9 +142,15 @@ async def root():
     return {"message": "Root endpoint of the API"}
 
 
-@app.get("/campaigns", response_model=ApiResponse[list[Campaign]], status_code=200)
-async def read_campaigns(session: SessionDep):
-    campaigns = session.exec(select(Campaign)).all()
+@app.get("/campaigns/page", response_model=ApiResponse[list[Campaign]], status_code=200)
+async def read_campaigns_by_page_with_offset(
+        session: SessionDep,
+        page: int = Query(1, ge=1)
+):
+    # set hard limits and offsets
+    limit = 3
+    offset = (page - 1) * limit
+    campaigns = session.exec(select(Campaign).order_by(Campaign.campaign_id).offset(offset).limit(limit)).all()
 
     return ApiResponse(
         data=campaigns,
@@ -138,8 +159,93 @@ async def read_campaigns(session: SessionDep):
     )
 
 
+@app.get("/campaigns/page_size", response_model=PaginatedResponse[list[Campaign]], status_code=200)
+async def read_campaigns_by_page_and_page_size_with_offset(
+        request: Request,
+        session: SessionDep,
+        page: int = Query(1, ge=1),
+        page_size: int = Query(3, ge=1),
+):
+    # establish offset and get total count
+    offset = (page - 1) * page_size
+
+    campaigns = session.exec(
+        select(Campaign)
+        .order_by(Campaign.campaign_id)
+        .offset(offset)
+        .limit(page_size)
+    ).all()
+
+    total = session.exec(
+        select(func.count()).select_from(Campaign)
+    ).one()
+
+    # prep next and prev url to consume
+    base_url = str(request.url).split("?")[0]
+
+    next_url = (
+        f"{base_url}?page={page + 1}&page_size={page_size}"
+        if offset + page_size < total
+        else None
+    )
+
+    prev_url = (
+        f"{base_url}?page={page - 1}&page_size={page_size}"
+        if page > 1
+        else None
+    )
+
+    return PaginatedResponse(
+        data=campaigns,
+        next=next_url,
+        prev=prev_url,
+        message="Campaigns retrieved successfully",
+        meta={
+            "count": len(campaigns),
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        },
+    )
+
+
+@app.get("/campaigns/limit", response_model=PaginatedResponse[list[Campaign]], status_code=200)
+async def read_campaigns_by_limit_with_offset(
+        request: Request,
+        session: SessionDep,
+        offset: int = Query(0, ge=0),
+        limit: int = Query(3, ge=1),
+):
+    campaigns = session.exec(
+        select(Campaign)
+        .order_by(Campaign.campaign_id)
+        .offset(offset)
+        .limit(limit)
+    ).all()
+
+    # prep next and prev url to consume
+    base_url = str(request.url).split("?")[0]
+    next_url = f"{base_url}?offset={offset + limit}&limit={limit}"
+    prev_url = (
+        f"{base_url}?offset={max(0, offset - limit)}&limit={limit}"
+        if offset > 0
+        else None
+    )
+
+    return PaginatedResponse(
+        data=campaigns,
+        next=next_url,
+        prev=prev_url,
+        message="Campaigns retrieved successfully",
+        meta={"count": len(campaigns), },
+    )
+
+
 @app.get("/campaigns/{campaign_id}", response_model=ApiResponse[Campaign], status_code=200)
-async def read_campaign_by_id(campaign_id: int, session: SessionDep):
+async def read_campaign_by_id(
+        campaign_id: int,
+        session: SessionDep
+):
     campaign = session.get(Campaign, campaign_id)
 
     if campaign is None:
@@ -152,7 +258,10 @@ async def read_campaign_by_id(campaign_id: int, session: SessionDep):
 
 
 @app.post("/campaigns", response_model=ApiResponse[Campaign], status_code=201)
-async def create_campaign(body: CampaignCreate, session: SessionDep):
+async def create_campaign(
+        body: CampaignCreate,
+        session: SessionDep
+):
     campaign = Campaign(
         name=body.name,
         due_date=body.due_date,
@@ -193,7 +302,10 @@ async def update_campaign(
 
 
 @app.delete("/campaigns/{campaign_id}", status_code=204)
-async def delete_campaign(campaign_id: int, session: SessionDep):
+async def delete_campaign(
+        campaign_id: int,
+        session: SessionDep
+):
     campaign = session.get(Campaign, campaign_id)
 
     if campaign is None:
@@ -217,7 +329,10 @@ async def read_employees(session: SessionDep):
 
 
 @app.get("/employees/{employee_id}", response_model=ApiResponse[Employee], status_code=200)
-async def read_employee_by_id(employee_id: int, session: SessionDep):
+async def read_employee_by_id(
+        employee_id: int,
+        session: SessionDep
+):
     employee = session.get(Employee, employee_id)
 
     if employee is None:
@@ -230,7 +345,10 @@ async def read_employee_by_id(employee_id: int, session: SessionDep):
 
 
 @app.get("/employees/search/{employee_name}", response_model=ApiResponse[Employee], status_code=200)
-async def read_first_or_last_employee_name(employee_name: str, session: SessionDep):
+async def read_first_or_last_employee_name(
+        employee_name: str,
+        session: SessionDep
+):
     statement = select(Employee).where(
         (Employee.first_name == employee_name) | (Employee.last_name == employee_name)
     )
@@ -247,7 +365,10 @@ async def read_first_or_last_employee_name(employee_name: str, session: SessionD
 
 
 @app.post("/employees", response_model=ApiResponse[Employee], status_code=201)
-async def create_employee(body: EmployeeCreate, session: SessionDep):
+async def create_employee(
+        body: EmployeeCreate,
+        session: SessionDep
+):
     employee = Employee(
         first_name=body.first_name,
         last_name=body.last_name,
@@ -288,7 +409,10 @@ async def update_employee(
 
 
 @app.delete("/employees/{employee_id}", status_code=204)
-async def delete_employee(employee_id: int, session: SessionDep):
+async def delete_employee(
+        employee_id: int,
+        session: SessionDep
+):
     employee = session.get(Employee, employee_id)
 
     if employee is None:
