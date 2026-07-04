@@ -250,12 +250,32 @@ async def read_campaigns_by_limit_with_offset(
     )
 
 
+# Encodes pagination state into a URL-safe cursor.
+#
+# Process:
+# 1. Store the cursor data (currently the last campaign_id) in a Python dictionary.
+# 2. Convert the dictionary into a JSON string.
+# 3. Encode the JSON string into UTF-8 bytes.
+# 4. Base64 encode those bytes to produce a URL-safe string.
+#
+# The resulting cursor is opaque to clients but is not encrypted—it simply
+# represents the pagination state in a format that can safely travel in a URL.
 def encode_cursor(last_id: int) -> str:
     payload = {"last_id": last_id}
     raw = json.dumps(payload).encode("utf-8")
     return base64.urlsafe_b64encode(raw).decode("utf-8")
 
 
+# Decodes a URL-safe cursor back into its original pagination state.
+#
+# Process:
+# 1. Convert the incoming cursor string into UTF-8 bytes.
+# 2. Base64 decode the bytes to recover the original JSON.
+# 3. Decode the JSON bytes back into a string.
+# 4. Parse the JSON into a Python dictionary.
+# 5. Extract and return the last campaign_id used to continue pagination.
+#
+# If the cursor is malformed or cannot be decoded, a 400 Bad Request is returned.
 def decode_cursor(cursor: str) -> int:
     try:
         raw = base64.urlsafe_b64decode(cursor.encode("utf-8"))
