@@ -308,7 +308,7 @@ async def read_campaigns_by_cursor(
 
     base_url = str(request.url).split("?")[0]
     next_url = (
-        f"{base_url}?cursor={next_cursor}&page_size={page_size}"
+        f"{base_url}?page_size={page_size}"
         if next_cursor
         else None
     )
